@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventGenerator", "EventGenerator\EventGenerator.csproj", "{5B6920EA-970D-43EF-8614-1309C64FE552}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventProcessor", "EventProcessor\EventProcessor.csproj", "{18A183BD-A1B8-4E50-A301-CF601755994E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5B6920EA-970D-43EF-8614-1309C64FE552}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5B6920EA-970D-43EF-8614-1309C64FE552}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5B6920EA-970D-43EF-8614-1309C64FE552}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5B6920EA-970D-43EF-8614-1309C64FE552}.Release|Any CPU.Build.0 = Release|Any CPU
+		{18A183BD-A1B8-4E50-A301-CF601755994E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{18A183BD-A1B8-4E50-A301-CF601755994E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{18A183BD-A1B8-4E50-A301-CF601755994E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{18A183BD-A1B8-4E50-A301-CF601755994E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
