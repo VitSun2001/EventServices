@@ -24,6 +24,8 @@ builder.Services.AddDbContext<EventProcessorDbContext>(options =>
     }
 );
 builder.Services.AddScoped<IIncidentsService, IncidentsService>();
+//builder.Services.AddSingleton<IncidentsServiceSingleton>();
+//builder.Services.AddHostedService<IncomingEventListenerWorker>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
