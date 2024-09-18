@@ -1,6 +1,8 @@
 using EventProcessor.Configurations;
 using EventProcessor.Data;
 using EventProcessor.Extensions;
+using EventProcessor.Services;
+using EventProcessor.Workers;
 using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,6 +20,7 @@ builder.Services.AddDbContext<EventProcessorDbContext>(options =>
         }
     }
 );
+builder.Services.AddScoped<IIncidentsService, IncidentsService>();
 var app = builder.Build();
 
 app.MapGet("/", () => "Hello World!");
