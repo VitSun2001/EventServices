@@ -14,10 +14,12 @@ public class IncidentsServiceSingleton : IIncidentsService
 {
     private readonly Queue<Tuple<SendEventRequest, DateTime>> _eventsOfSecondTypeQueue = new();
     private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly EventProcessorOptions _options;
 
-    public IncidentsServiceSingleton(IServiceScopeFactory serviceScopeFactory)
+    public IncidentsServiceSingleton(IServiceScopeFactory serviceScopeFactory, IOptions<EventProcessorOptions> options)
     {
         _serviceScopeFactory = serviceScopeFactory;
+        _options = options.Value;
     }
     
     public async Task<GetIncidentsResponse> GetIncidents(GetIncidentsQuery query)
@@ -81,9 +83,6 @@ public class IncidentsServiceSingleton : IIncidentsService
 
     private async Task HandleFirstEventType(SendEventRequest request, DateTime requestDateTime)
     {
-        using var scope = _serviceScopeFactory.CreateScope();
-        var options = scope.ServiceProvider.GetRequiredService<IOptions<EventProcessorOptions>>().Value;
-        
         IncidentTypeEnum incidentType;
         var eventRequestsToAdd = new List<SendEventRequest>();
 
@@ -92,7 +91,7 @@ public class IncidentsServiceSingleton : IIncidentsService
         {
             var dequeue = _eventsOfSecondTypeQueue.Dequeue();
             if (requestDateTime - dequeue.Item2 >=
-                TimeSpan.FromMilliseconds(options.IncidentGracePeriodMillis)) continue;
+                TimeSpan.FromMilliseconds(_options.IncidentGracePeriodMillis)) continue;
             eventOfSecondType = dequeue.Item1;
             break;
         }
@@ -109,6 +108,7 @@ public class IncidentsServiceSingleton : IIncidentsService
         
         var incident = new Incident(incidentType, requestDateTime);
         
+        using var scope = _serviceScopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<EventProcessorDbContext>();
         
         var eventsToAdd = eventRequestsToAdd.Select(x => new Event(x.Type)
