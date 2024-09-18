@@ -23,9 +23,19 @@ builder.Services.AddDbContext<EventProcessorDbContext>(options =>
         }
     }
 );
-builder.Services.AddScoped<IIncidentsService, IncidentsService>();
-//builder.Services.AddSingleton<IncidentsServiceSingleton>();
-//builder.Services.AddHostedService<IncomingEventListenerWorker>();
+var eventProcessorOptions = builder.Configuration
+    .GetSection(nameof(EventProcessorOptions))
+    .Get<EventProcessorOptions>();
+if (eventProcessorOptions.UseAlternativeIncidentPipeline)
+{
+    builder.Services.AddSingleton<IIncidentsService, IncidentsServiceSingleton>();
+    builder.Services.AddHostedService<IncomingEventListenerWorker>();
+}
+else
+{
+    builder.Services.AddScoped<IIncidentsService, IncidentsService>();
+}
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -45,15 +55,19 @@ app.MapGet("/incidents", async Task<IResult> (IIncidentsService incidentsService
 {
     page ??= 1;
     pageSize ??= 100;
-    
-    var response = await incidentsService.GetIncidents(new GetIncidentsQuery(sortColumn, orderBy, page.Value, pageSize.Value));
+
+    var response =
+        await incidentsService.GetIncidents(new GetIncidentsQuery(sortColumn, orderBy, page.Value, pageSize.Value));
     return Results.Ok(response);
 });
 
-app.MapPost("/events", async Task<IResult> (SendEventRequest request, IIncidentsService incidentsService) =>
+if (!eventProcessorOptions.UseAlternativeIncidentPipeline)
 {
-    await incidentsService.HandleEventRequest(request);
-    return Results.Ok();
-});
+    app.MapPost("/events", async Task<IResult> (SendEventRequest request, IIncidentsService incidentsService) =>
+    {
+        await incidentsService.HandleEventRequest(request);
+        return Results.Ok();
+    });
+}
 
 app.Run();
