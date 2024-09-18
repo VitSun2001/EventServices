@@ -24,10 +24,19 @@ builder.Services.AddDbContext<EventProcessorDbContext>(options =>
     }
 );
 builder.Services.AddScoped<IIncidentsService, IncidentsService>();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 var app = builder.Build();
 
-app.MapGet("/", () => "Hello World!");
 app.SetupDatabase();
+
+app.UseSwagger();
+app.UseSwaggerUI(configuration =>
+{
+    configuration.RoutePrefix = "";
+    configuration.SwaggerEndpoint("/swagger/v1/swagger.json", "EventProcessor");
+});
 
 app.MapGet("/incidents", async Task<IResult> (IIncidentsService incidentsService,
     string? sortColumn, string? orderBy, int? page, int? pageSize) =>
