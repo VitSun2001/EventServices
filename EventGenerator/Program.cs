@@ -8,6 +8,8 @@ builder.Services.Configure<EventGeneratorOptions>(builder.Configuration.GetSecti
 builder.Services.Configure<EventServiceOptions>(builder.Configuration.GetSection(nameof(EventServiceOptions)));
 builder.Services.AddHttpClient<IEventService>();
 builder.Services.AddTransient<IEventService, EventService>();
+builder.Services.AddHostedService<EventGeneratorWorker>();
+
 var app = builder.Build();
 
 app.MapGet("/", () => "Hello World!");
