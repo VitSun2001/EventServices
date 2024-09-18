@@ -4,7 +4,9 @@ using EventProcessor.Extensions;
 using EventProcessor.Services;
 using EventProcessor.Workers;
 using Microsoft.EntityFrameworkCore;
+using Shared.Queries;
 using Shared.Requests;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<EventProcessorOptions>(builder.Configuration.GetSection(nameof(EventProcessorOptions)));
@@ -26,6 +28,17 @@ var app = builder.Build();
 
 app.MapGet("/", () => "Hello World!");
 app.SetupDatabase();
+
+app.MapGet("/incidents", async Task<IResult> (IIncidentsService incidentsService,
+    string? sortColumn, string? orderBy, int? page, int? pageSize) =>
+{
+    page ??= 1;
+    pageSize ??= 100;
+    
+    var response = await incidentsService.GetIncidents(new GetIncidentsQuery(sortColumn, orderBy, page.Value, pageSize.Value));
+    return Results.Ok(response);
+});
+
 app.MapPost("/events", async Task<IResult> (SendEventRequest request, IIncidentsService incidentsService) =>
 {
     await incidentsService.HandleEventRequest(request);
