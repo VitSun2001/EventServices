@@ -4,6 +4,7 @@ using EventProcessor.Extensions;
 using EventProcessor.Services;
 using EventProcessor.Workers;
 using Microsoft.EntityFrameworkCore;
+using Shared.Requests;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<EventProcessorOptions>(builder.Configuration.GetSection(nameof(EventProcessorOptions)));
@@ -25,5 +26,10 @@ var app = builder.Build();
 
 app.MapGet("/", () => "Hello World!");
 app.SetupDatabase();
+app.MapPost("/events", async Task<IResult> (SendEventRequest request, IIncidentsService incidentsService) =>
+{
+    await incidentsService.HandleEventRequest(request);
+    return Results.Ok();
+});
 
 app.Run();
