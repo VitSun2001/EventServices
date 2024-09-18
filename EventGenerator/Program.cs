@@ -13,5 +13,11 @@ builder.Services.AddHostedService<EventGeneratorWorker>();
 var app = builder.Build();
 
 app.MapGet("/", () => "Hello World!");
+app.MapPost("/events", async Task<IResult> (IEventService eventSenderService) =>
+{
+    var generateEvent = eventSenderService.GenerateEvent();
+    var responseMessage = await eventSenderService.SendEvent(generateEvent);
+    return responseMessage.IsSuccessStatusCode ? Results.Ok() : Results.BadRequest();
+});
 
 app.Run();
