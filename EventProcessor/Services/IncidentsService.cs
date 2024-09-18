@@ -26,7 +26,35 @@ public class IncidentsService : IIncidentsService
 
     public async Task<GetIncidentsResponse> GetIncidents(GetIncidentsQuery query)
     {
-        throw new NotImplementedException();
+        Expression<Func<Incident, object>> keySelector = query.SortColumn?.ToLower() switch
+        {
+            "type" => incident => incident.Type,
+            _ => incident => incident.Time
+        };
+
+        var incidentsQuery = query.OrderBy == "desc"
+            ? _dbContext.Incidents.OrderByDescending(keySelector)
+            : _dbContext.Incidents.OrderBy(keySelector);
+        
+        var incidents = await incidentsQuery
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .Include(x => x.Events.OrderByDescending(e => e.Time))
+            .Select(x => new GetIncidentsResponse.Incident(x.Id, x.Type, x.Time,
+                x.Events.Select(e => new GetIncidentsResponse.Event(e.Id, e.Type, e.Time))))
+            .AsNoTracking()
+            .ToListAsync();
+        
+        var count = _dbContext.Incidents.Count();
+
+        return new GetIncidentsResponse(
+            query.Page,
+            incidents.Count,
+            count,
+            query.SortColumn,
+            query.OrderBy,
+            incidents
+        );
     }
 
     public async Task HandleEventRequest(SendEventRequest request)
