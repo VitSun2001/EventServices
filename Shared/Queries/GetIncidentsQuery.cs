@@ -1,11 +1,11 @@
 namespace Shared.Queries;
 
-public class GetIncidentsQuery
+public record GetIncidentsQuery
 {
-    public string? SortColumn { get; init; }
-    public string? OrderBy { get; init; }
-    public int Page { get; init; }
-    public int PageSize { get; init; }
+    public string? SortColumn { get; }
+    public string? OrderBy { get; }
+    public int Page { get; }
+    public int PageSize { get; }
     
     public GetIncidentsQuery(string? sortColumn, string? orderBy, int page, int pageSize)
     {

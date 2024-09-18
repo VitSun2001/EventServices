@@ -91,11 +91,9 @@ public class IncidentsService : IIncidentsService
             while (EventsOfSecondTypeQueue.Count != 0)
             {
                 var dequeue = EventsOfSecondTypeQueue.Dequeue();
-                if (requestDateTime - dequeue.Item2 < TimeSpan.FromMilliseconds(_options.IncidentGracePeriodMillis))
-                {
-                    eventOfSecondType = dequeue.Item1;
-                    break;
-                }
+                if (requestDateTime - dequeue.Item2 >= TimeSpan.FromMilliseconds(_options.IncidentGracePeriodMillis)) continue;
+                eventOfSecondType = dequeue.Item1;
+                break;
             }
         }
 

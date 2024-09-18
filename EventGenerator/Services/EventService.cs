@@ -27,7 +27,7 @@ public class EventService : IEventService
     }
 
     public Task<HttpResponseMessage> SendEvent(Event @event) => _httpClient.PostAsJsonAsync(
-        _options?.EventProcessorEndpoint,
+        _options.EventProcessorEndpoint,
         new SendEventRequest(@event.Id, @event.Type, @event.Time)
     );
 }
