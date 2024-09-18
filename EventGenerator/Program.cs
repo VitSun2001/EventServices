@@ -9,10 +9,19 @@ builder.Services.Configure<EventServiceOptions>(builder.Configuration.GetSection
 builder.Services.AddHttpClient<IEventService>();
 builder.Services.AddTransient<IEventService, EventService>();
 builder.Services.AddHostedService<EventGeneratorWorker>();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-app.MapGet("/", () => "Hello World!");
+app.UseSwagger();
+app.UseSwaggerUI(configuration =>
+{
+    configuration.RoutePrefix = "";
+    configuration.SwaggerEndpoint("/swagger/v1/swagger.json", "MY API");
+});
+
+
 app.MapPost("/events", async Task<IResult> (IEventService eventSenderService) =>
 {
     var generateEvent = eventSenderService.GenerateEvent();
