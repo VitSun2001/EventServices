@@ -1,8 +1,9 @@
-using System.Diagnostics;
 using System.Linq.Expressions;
 using Domain.Entities;
+using EventProcessor.Configurations;
 using EventProcessor.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Shared.Queries;
 using Shared.Requests;
 using Shared.Responses;
@@ -11,8 +12,7 @@ namespace EventProcessor.Services;
 
 public class IncidentsServiceSingleton : IIncidentsService
 {
-    private readonly Dictionary<SendEventRequest, DateTime> _eventsOfSecondTypeToAdd = new();
-    private readonly Stopwatch _stopwatch = new();
+    private readonly Queue<Tuple<SendEventRequest, DateTime>> _eventsOfSecondTypeQueue = new();
     private readonly IServiceScopeFactory _serviceScopeFactory;
 
     public IncidentsServiceSingleton(IServiceScopeFactory serviceScopeFactory)
@@ -81,52 +81,54 @@ public class IncidentsServiceSingleton : IIncidentsService
 
     private async Task HandleFirstEventType(SendEventRequest request, DateTime requestDateTime)
     {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var options = scope.ServiceProvider.GetRequiredService<IOptions<EventProcessorOptions>>().Value;
+        
         IncidentTypeEnum incidentType;
-        var eventsToAdd = new Dictionary<SendEventRequest, DateTime>();
+        var eventRequestsToAdd = new List<SendEventRequest>();
 
-        if (_eventsOfSecondTypeToAdd.Count == 0 || _stopwatch.Elapsed > TimeSpan.FromSeconds(20))
+        SendEventRequest? eventOfSecondType = null;
+        while (_eventsOfSecondTypeQueue.Count != 0)
+        {
+            var dequeue = _eventsOfSecondTypeQueue.Dequeue();
+            if (requestDateTime - dequeue.Item2 >=
+                TimeSpan.FromMilliseconds(options.IncidentGracePeriodMillis)) continue;
+            eventOfSecondType = dequeue.Item1;
+            break;
+        }
+        if (eventOfSecondType == null)
         {
             incidentType = IncidentTypeEnum.First;
         }
         else
         {
             incidentType = IncidentTypeEnum.Second;
-            _stopwatch.Restart();
-
-            foreach (var (key, value) in eventsToAdd)
-            {
-                eventsToAdd.Add(key, value);
-            }
-
-            _eventsOfSecondTypeToAdd.Clear();
+            eventRequestsToAdd.Add(eventOfSecondType);
         }
-
+        eventRequestsToAdd.Add(request);
+        
         var incident = new Incident(incidentType, requestDateTime);
-
-        using var scope = _serviceScopeFactory.CreateScope();
-
+        
         var dbContext = scope.ServiceProvider.GetRequiredService<EventProcessorDbContext>();
-
-        eventsToAdd.Add(request, requestDateTime);
-        foreach (var eventToAdd in eventsToAdd.Select(requestToAdd =>
-                     new Event(requestToAdd.Key.Type) {Id = requestToAdd.Key.Id, Time = requestToAdd.Key.Time}
-                 ))
+        
+        var eventsToAdd = eventRequestsToAdd.Select(x => new Event(x.Type)
         {
-            await dbContext.Events.AddAsync(eventToAdd);
-            incident.Events.Add(eventToAdd);
+            Id = x.Id,
+            Time = x.Time
+        });
+        
+        foreach (var @event in eventsToAdd)
+        {
+            await dbContext.Events.AddAsync(@event);
+            incident.Events.Add(@event);
         }
-
+        
         await dbContext.AddAsync(incident);
         await dbContext.SaveChangesAsync();
     }
 
     private void HandleSecondEventType(SendEventRequest request, DateTime requestDateTime)
     {
-        if (_stopwatch.IsRunning)
-            _stopwatch.Restart();
-        else
-            _stopwatch.Start();
-
-        _eventsOfSecondTypeToAdd.Add(request, requestDateTime);
+        _eventsOfSecondTypeQueue.Enqueue(Tuple.Create(request, requestDateTime));
     }
 }

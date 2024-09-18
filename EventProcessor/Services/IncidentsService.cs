@@ -12,7 +12,7 @@ namespace EventProcessor.Services;
 
 public class IncidentsService : IIncidentsService
 {
-    private static readonly Dictionary<SendEventRequest, DateTime> SecondTypeEventsQueue = new();
+    private static readonly Queue<Tuple<SendEventRequest, DateTime>> EventsOfSecondTypeQueue = new();
     private static readonly object Lock = new();
 
     private readonly EventProcessorOptions _options;
@@ -35,7 +35,7 @@ public class IncidentsService : IIncidentsService
         var incidentsQuery = query.OrderBy == "desc"
             ? _dbContext.Incidents.OrderByDescending(keySelector)
             : _dbContext.Incidents.OrderBy(keySelector);
-        
+
         var incidents = await incidentsQuery
             .Skip((query.Page - 1) * query.PageSize)
             .Take(query.PageSize)
@@ -44,7 +44,7 @@ public class IncidentsService : IIncidentsService
                 x.Events.Select(e => new GetIncidentsResponse.Event(e.Id, e.Type, e.Time))))
             .AsNoTracking()
             .ToListAsync();
-        
+
         var count = _dbContext.Incidents.Count();
 
         return new GetIncidentsResponse(
@@ -83,41 +83,47 @@ public class IncidentsService : IIncidentsService
     private async Task HandleFirstEventType(SendEventRequest request, DateTime requestDateTime)
     {
         IncidentTypeEnum incidentType;
-        var eventsToAdd = new Dictionary<SendEventRequest, DateTime>();
+        var eventRequestsToAdd = new List<SendEventRequest>();
 
+        SendEventRequest? eventOfSecondType = null;
         lock (Lock)
         {
-            if (
-                SecondTypeEventsQueue.Count == 0 ||
-                request.Time - SecondTypeEventsQueue.MaxBy(x => x.Value).Value >
-                TimeSpan.FromMilliseconds(_options.IncidentGracePeriodMillis)
-            )
+            while (EventsOfSecondTypeQueue.Count != 0)
             {
-                incidentType = IncidentTypeEnum.First;
-            }
-            else
-            {
-                incidentType = IncidentTypeEnum.Second;
-                foreach (var (key, value) in eventsToAdd)
+                var dequeue = EventsOfSecondTypeQueue.Dequeue();
+                if (requestDateTime - dequeue.Item2 < TimeSpan.FromMilliseconds(_options.IncidentGracePeriodMillis))
                 {
-                    eventsToAdd.Add(key, value);
+                    eventOfSecondType = dequeue.Item1;
+                    break;
                 }
-
-                SecondTypeEventsQueue.Clear();
             }
         }
 
+        if (eventOfSecondType == null)
+        {
+            incidentType = IncidentTypeEnum.First;
+        }
+        else
+        {
+            incidentType = IncidentTypeEnum.Second;
+            eventRequestsToAdd.Add(eventOfSecondType);
+        }
+        eventRequestsToAdd.Add(request);
+        
         var incident = new Incident(incidentType, requestDateTime);
 
-        eventsToAdd.Add(request, requestDateTime);
-        foreach (var eventToAdd in eventsToAdd.Select(requestToAdd =>
-                     new Event(requestToAdd.Key.Type) {Id = requestToAdd.Key.Id, Time = requestToAdd.Key.Time,}
-                 ))
+        var eventsToAdd = eventRequestsToAdd.Select(x => new Event(x.Type)
         {
-            await _dbContext.Events.AddAsync(eventToAdd);
-            incident.Events.Add(eventToAdd);
+            Id = x.Id,
+            Time = x.Time
+        });
+        
+        foreach (var @event in eventsToAdd)
+        {
+           await _dbContext.Events.AddAsync(@event);
+           incident.Events.Add(@event);
         }
-
+        
         await _dbContext.AddAsync(incident);
         await _dbContext.SaveChangesAsync();
     }
@@ -126,7 +132,7 @@ public class IncidentsService : IIncidentsService
     {
         lock (Lock)
         {
-            SecondTypeEventsQueue.Add(request, requestDateTime);
+            EventsOfSecondTypeQueue.Enqueue(Tuple.Create(request, requestDateTime));
         }
     }
 }
