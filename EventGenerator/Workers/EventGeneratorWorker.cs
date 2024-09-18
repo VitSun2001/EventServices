@@ -21,7 +21,7 @@ public sealed class EventGeneratorWorker : BackgroundService
         while (!cancellationToken.IsCancellationRequested)
         {
             var generatedEvent = _eventService.GenerateEvent();
-            _eventService.SendEvent(generatedEvent);
+            _ = _eventService.SendEvent(generatedEvent);
 
             var delay = TimeSpan.FromMilliseconds(
                 _random.Next(_options.MinDelayBetweenEventsMillis, _options.MaxDelayBetweenEventsMillis + 1)
