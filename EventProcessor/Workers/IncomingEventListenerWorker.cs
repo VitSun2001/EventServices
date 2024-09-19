@@ -59,6 +59,9 @@ public class IncomingEventListenerWorker : BackgroundService
 
             var response = httpContext.Response;
             response.StatusCode = (int) HttpStatusCode.OK;
+            response.ContentType = "text/plain";
+            await response.OutputStream.WriteAsync(Array.Empty<byte>().AsMemory(0, 0), stoppingToken);
+            response.OutputStream.Close();
         }
     }
 }
