@@ -1,3 +1,5 @@
+# Вы находитесь в ветке postduedatefixes
+Сюда залиты изменения, сделанные после дедлайна 18.09.2024 18:00 по МСК
 # EventGenerator и EventProcessor
 - у EventGenerator можно настроить минимальную `EventGeneratorOptions.MinDelayBetweenEventsMillis` и максимальную `EventGeneratorOptions.MaxDelayBetweenEventsMillis` задержку перед генерацией новго события.
 - Uri для отправки запросов указывается в `EventServiceOptions.EventProcessorEndpoint`
